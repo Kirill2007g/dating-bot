@@ -17,6 +17,7 @@ from db import (
     add_profile, get_profile, get_lang,
     add_media, clear_media, get_media,
 )
+from services.geocoding import normalize_city as geocode_city
 from services.media_flow import collect_media_step
 from services.profile_format import build_profile_caption, build_profile_caption_from_row
 from utils import send_media
@@ -88,7 +89,8 @@ async def get_city(message: Message, state: FSMContext):
     if not message.text or message.text.isdigit() or len(message.text.strip()) < 2:
         await message.answer(t("enter_city", lang))
         return
-    await state.update_data(city=message.text.strip())
+    city = await geocode_city(message.text.strip())
+    await state.update_data(city=city)
     await message.answer(t("ask_name", lang))
     await state.set_state(StartRegistration.name)
 

@@ -5,39 +5,6 @@ from repositories.sqlite_client import conn, cursor
 
 DAILY_LIMIT = 500
 
-_CITY_NORMALIZE: dict[str, str] = {
-    "київ": "Киев", "киев": "Киев",
-    "харків": "Харьков", "харьков": "Харьков",
-    "одеса": "Одесса", "одесса": "Одесса",
-    "дніпро": "Днепр", "днепр": "Днепр",
-    "дніпропетровськ": "Днепр", "днепропетровск": "Днепр",
-    "запоріжжя": "Запорожье", "запорожье": "Запорожье",
-    "львів": "Львов", "львов": "Львов",
-    "кривий ріг": "Кривой Рог", "кривой рог": "Кривой Рог",
-    "миколаїв": "Николаев", "николаев": "Николаев",
-    "вінниця": "Винница", "винница": "Винница",
-    "полтава": "Полтава",
-    "чернігів": "Чернигов", "чернигов": "Чернигов",
-    "черкаси": "Черкассы", "черкассы": "Черкассы",
-    "суми": "Сумы", "сумы": "Сумы",
-    "хмельницький": "Хмельницкий", "хмельницкий": "Хмельницкий",
-    "житомир": "Житомир",
-    "рівне": "Ровно", "ровно": "Ровно",
-    "тернопіль": "Тернополь", "тернополь": "Тернополь",
-    "ужгород": "Ужгород",
-    "херсон": "Херсон",
-    "івано-франківськ": "Ивано-Франковск",
-    "ивано-франковск": "Ивано-Франковск",
-    "питер": "Санкт-Петербург",
-    "спб": "Санкт-Петербург",
-    "санкт-петербург": "Санкт-Петербург",
-}
-
-
-def normalize_city(city: str) -> str:
-    key = city.lower().strip()
-    return _CITY_NORMALIZE.get(key, city.strip().title())
-
 
 def add_profile(telegram_id: int, username: str, name: str, age: int, city: str,
                 gender: str, looking_for: str, description: str) -> None:
@@ -50,7 +17,7 @@ def add_profile(telegram_id: int, username: str, name: str, age: int, city: str,
         """INSERT OR REPLACE INTO profiles
         (telegram_id, username, name, age, city, gender, looking_for, description, language, premium_until)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (telegram_id, username, name, age, normalize_city(city), gender, looking_for, description,
+        (telegram_id, username, name, age, city, gender, looking_for, description,
          lang, premium_until),
     )
     conn.commit()

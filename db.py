@@ -11,9 +11,6 @@ def delete_profile(telegram_id: int) -> bool:
     return deleted
 
 
-def normalize_city(city: str) -> str:
-    return profile_repo.normalize_city(city)
-
 
 def add_profile(telegram_id: int, username: str, name: str, age: int, city: str,
                 gender: str, looking_for: str, description: str) -> None:
