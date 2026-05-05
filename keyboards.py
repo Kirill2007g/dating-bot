@@ -4,7 +4,7 @@ from aiogram.types import (
 )
 from strings import t
 
-# ─── Константы (не зависят от языка) ─────────────────────────────────────────
+
 
 first_kb = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="👍")]],
@@ -20,7 +20,7 @@ def viewing_kb(is_premium: bool = False) -> ReplyKeyboardMarkup:
     rows = [[KeyboardButton(text="❤️"), KeyboardButton(text="💌"),
              KeyboardButton(text="👎"), KeyboardButton(text="💤")]]
     if is_premium:
-        rows.append([KeyboardButton(text="↩️")])
+        rows.append([KeyboardButton(text="↩️")])  # отмена дизлайка — только для премиума
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 liked_me_kb = ReplyKeyboardMarkup(
@@ -28,7 +28,7 @@ liked_me_kb = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 
-# Кнопки языков всегда на своём языке
+
 language_kb = ReplyKeyboardMarkup(
     keyboard=[
         [
@@ -42,7 +42,6 @@ language_kb = ReplyKeyboardMarkup(
 )
 
 
-# ─── Зависят от языка ─────────────────────────────────────────────────────────
 
 def back_only_kb(lang: str) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -131,7 +130,7 @@ def premium_kb(lang: str) -> ReplyKeyboardMarkup:
     )
 
 
-# ─── Inline-клавиатуры ────────────────────────────────────────────────────────
+# Inline-клавиатуры
 
 def liked_notification_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[

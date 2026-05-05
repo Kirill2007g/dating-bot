@@ -11,14 +11,10 @@ from db import (
 from keyboards import viewing_kb, liked_me_kb, main_menu_kb, liked_notification_kb, match_kb, first_kb
 from strings import t, ALL_BROWSE
 from states import Viewing
+from services.profile_format import build_profile_caption_from_row
 from utils import send_media
 
 router = Router()
-
-
-def _caption(profile: tuple) -> str:
-    _, _, name, age, city, _, _, desc, _, _, _, _, _ = profile
-    return f"{name}, {age}, {city}" + (f"\n{desc}" if desc else "")
 
 
 def _gender_word(gender: str, lang: str) -> str:
@@ -28,7 +24,7 @@ def _gender_word(gender: str, lang: str) -> str:
 
 async def _show_profile(message: Message, profile: tuple, reply_markup=None) -> None:
     media_list = get_media(profile[0])
-    await send_media(message, media_list, _caption(profile), reply_markup=reply_markup)
+    await send_media(message, media_list, build_profile_caption_from_row(profile), reply_markup=reply_markup)
 
 
 async def _send_match(bot: Bot, to_id: int, partner_name: str,
@@ -120,7 +116,7 @@ async def show_next_or_liked(message: Message, state: FSMContext,
         await message.answer(t("no_profiles", lang), reply_markup=main_menu_kb(lang))
 
 
-# ─── Начать просмотр ─────────────────────────────────────────────────────────
+# Начать просмотр
 
 @router.message(F.text.in_(ALL_BROWSE))
 async def start_viewing(message: Message, state: FSMContext):
@@ -128,7 +124,7 @@ async def start_viewing(message: Message, state: FSMContext):
     await show_next_or_liked(message, state)
 
 
-# ─── Обычный просмотр ────────────────────────────────────────────────────────
+# Обычный просмотр анкет
 
 @router.message(Viewing.viewing, F.text == "❤️")
 async def on_like(message: Message, state: FSMContext, bot: Bot):
@@ -193,7 +189,7 @@ async def stop_viewing(message: Message, state: FSMContext):
     await message.answer(t("stop_viewing", lang), reply_markup=main_menu_kb(lang))
 
 
-# ─── Просмотр лайкнувших ─────────────────────────────────────────────────────
+# Просмотр тех, кто лайкнул меня
 
 @router.message(Viewing.liked_me, F.text == "❤️")
 async def on_like_back(message: Message, state: FSMContext, bot: Bot):
@@ -209,7 +205,7 @@ async def on_dislike_back(message: Message, state: FSMContext):
     await show_next_or_liked(message, state)
 
 
-# ─── Callback-кнопки ─────────────────────────────────────────────────────────
+# Callback-кнопки (уведомления)
 
 @router.callback_query(F.data == "view_liked")
 async def cb_view_liked(callback: CallbackQuery, state: FSMContext):
@@ -231,7 +227,7 @@ async def cb_report(callback: CallbackQuery):
     await callback.answer(t("report_sent", lang), show_alert=True)
 
 
-# ─── Catch-all: неизвестный ввод в состояниях просмотра ──────────────────────
+# Игнорируем неизвестный ввод во время просмотра
 
 @router.message(Viewing.viewing)
 async def noop_viewing(message: Message, state: FSMContext):
@@ -243,7 +239,7 @@ async def noop_liked_me(message: Message, state: FSMContext):
     pass
 
 
-# ─── Catch-all: нет состояния — показываем приветствие или меню ──────────────
+# Нет активного состояния — показываем меню или приветствие для незарегистрированных
 
 @router.message(StateFilter(None))
 async def catch_no_state(message: Message):

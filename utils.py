@@ -5,12 +5,12 @@ _CAPTION_MAX = 1024
 
 async def send_media(message: Message, media_list: list, caption: str,
                      reply_markup=None) -> None:
-    """Send 1-3 media items with a caption. Attaches reply_markup to the last message."""
     caption = caption[:_CAPTION_MAX]
     if not media_list:
         await message.answer(caption, reply_markup=reply_markup)
         return
 
+    # video_note нельзя добавить в media_group, поэтому отправляем всё по одному
     has_video_note = any(mt == "video_note" for _, mt in media_list)
 
     if len(media_list) == 1:
@@ -52,4 +52,5 @@ async def send_media(message: Message, media_list: list, caption: str,
                 group.append(InputMediaVideo(media=file_id, caption=cap))
         await message.answer_media_group(media=group)
         if reply_markup is not None:
+            # reply_markup нельзя прикрепить к media_group — шлём пустое сообщение-носитель
             await message.answer("​", reply_markup=reply_markup)

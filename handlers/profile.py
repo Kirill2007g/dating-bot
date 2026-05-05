@@ -18,18 +18,15 @@ from db import (
     get_profile, get_media, get_lang,
     update_media, update_description, update_language,
 )
+from services.media_flow import collect_media_step
+from services.profile_format import build_profile_caption_from_row
 from states import ProfileMenu, Premium, StartRegistration
 from utils import send_media
 
 router = Router()
 
 
-def _caption(profile: tuple) -> str:
-    _, _, name, age, city, _, _, desc, _, _, _, _, _ = profile
-    return f"{name}, {age}, {city}" + (f"\n{desc}" if desc else "")
-
-
-# ─── Моя анкета ──────────────────────────────────────────────────────────────
+# Моя анкета
 
 @router.message(F.text.in_(ALL_MY_PROFILE))
 async def my_profile(message: Message, state: FSMContext):
@@ -40,11 +37,11 @@ async def my_profile(message: Message, state: FSMContext):
         await message.answer(t("no_profile", lang))
         return
     media_list = get_media(message.from_user.id)
-    await send_media(message, media_list, _caption(profile))
+    await send_media(message, media_list, build_profile_caption_from_row(profile))
     await message.answer(t("menu_prompt", lang), reply_markup=main_menu_kb(lang))
 
 
-# ─── Заполнить заново ────────────────────────────────────────────────────────
+# Заполнить анкету заново
 
 @router.message(F.text.in_(ALL_REFILL))
 async def refill_profile(message: Message, state: FSMContext):
@@ -54,7 +51,7 @@ async def refill_profile(message: Message, state: FSMContext):
     await state.set_state(StartRegistration.age)
 
 
-# ─── Изменить фото/видео ─────────────────────────────────────────────────────
+# Изменить фото/видео
 
 @router.message(F.text.in_(ALL_CHANGE_PHOTO))
 async def change_photo_start(message: Message, state: FSMContext):
@@ -63,8 +60,7 @@ async def change_photo_start(message: Message, state: FSMContext):
     media_list = get_media(message.from_user.id)
     if media_list:
         profile = get_profile(message.from_user.id)
-        _, _, name, age, city, _, _, desc, _, _, _, _, _ = profile
-        caption = f"{name}, {age}, {city}" + (f"\n{desc}" if desc else "")
+        caption = build_profile_caption_from_row(profile)
         await send_media(message, media_list, caption)
     await message.answer(t("enter_new_photo", lang), reply_markup=ReplyKeyboardRemove())
     await state.update_data(temp_media=[])
@@ -86,23 +82,16 @@ async def save_new_photo(message: Message, state: FSMContext):
         await message.answer(t("photo_updated", lang), reply_markup=main_menu_kb(lang))
         return
 
-    if len(temp_media) >= 3:
+    step = collect_media_step(message, temp_media, max_items=3)
+    if step["status"] == "limit_reached":
         await message.answer(t("max_media", lang), reply_markup=done_media_kb)
         return
-
-    if message.photo:
-        file_id, media_type = message.photo[-1].file_id, "photo"
-    elif message.video_note:
-        file_id, media_type = message.video_note.file_id, "video_note"
-    elif message.video:
-        file_id, media_type = message.video.file_id, "video"
-    else:
+    if step["status"] == "invalid_media":
         await message.answer(t("send_media", lang))
         return
-
-    temp_media.append((file_id, media_type))
+    temp_media = step["temp_media"]
     await state.update_data(temp_media=temp_media)
-    remaining = 3 - len(temp_media)
+    remaining = step["remaining"]
     if remaining > 0:
         await message.answer(t("media_added", lang).format(n=remaining), reply_markup=done_media_kb)
     else:
@@ -111,7 +100,7 @@ async def save_new_photo(message: Message, state: FSMContext):
         await message.answer(t("photo_updated", lang), reply_markup=main_menu_kb(lang))
 
 
-# ─── Изменить текст ──────────────────────────────────────────────────────────
+# Изменить описание
 
 @router.message(F.text.in_(ALL_CHANGE_TEXT))
 async def change_text_start(message: Message, state: FSMContext):
@@ -136,7 +125,7 @@ async def save_new_description(message: Message, state: FSMContext):
     await message.answer(t("text_updated", lang), reply_markup=main_menu_kb(lang))
 
 
-# ─── Доп настройки ───────────────────────────────────────────────────────────
+# Настройки
 
 @router.message(F.text.in_(ALL_SETTINGS))
 async def settings_menu(message: Message, state: FSMContext):
@@ -164,7 +153,7 @@ async def settings_back(message: Message, state: FSMContext):
 async def save_language(message: Message, state: FSMContext):
     lang = get_lang(message.from_user.id)
 
-    # Кнопка "Назад" — возвращаем на настройки (на ТЕКУЩЕМ языке)
+    # "Назад" возвращает в настройки на текущем языке — до смены
     if message.text in ALL_BACK or message.text == "Назад":
         await message.answer(t("settings_prompt", lang), reply_markup=settings_kb(lang))
         await state.set_state(ProfileMenu.settings)
@@ -177,14 +166,14 @@ async def save_language(message: Message, state: FSMContext):
     new_lang = LANGUAGE_BUTTONS[message.text]
     update_language(message.from_user.id, new_lang)
     await state.clear()
-    # Показываем подтверждение уже на НОВОМ языке
+    # подтверждение уже на новом языке, иначе пользователь не поймёт, что изменилось
     await message.answer(
         t("language_saved", new_lang).format(lang=message.text),
         reply_markup=main_menu_kb(new_lang),
     )
 
 
-# ─── Премиум ─────────────────────────────────────────────────────────────────
+# Премиум
 
 @router.message(F.text.in_(ALL_PREMIUM))
 async def premium_menu(message: Message, state: FSMContext):

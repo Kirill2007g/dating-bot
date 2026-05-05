@@ -32,7 +32,7 @@ async def pre_checkout(query: PreCheckoutQuery):
 
 @dp.message(F.successful_payment)
 async def on_successful_payment(message: Message):
-    payload = message.successful_payment.invoice_payload  # "premium_2", "premium_10", etc.
+    payload = message.successful_payment.invoice_payload  
     days = int(payload.split("_")[1])
     activate_premium(message.from_user.id, days)
     lang = get_lang(message.from_user.id)
@@ -52,7 +52,7 @@ async def _safety_tips_loop(bot: Bot) -> None:
                 await bot.send_message(tg_id, tip)
             except Exception:
                 pass
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.05)  # пауза между сообщениями, чтобы не словить флуд-бан
 
 
 async def main():

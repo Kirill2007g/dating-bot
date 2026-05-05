@@ -17,13 +17,11 @@ from db import (
     add_profile, get_profile, get_lang,
     add_media, clear_media, get_media,
 )
+from services.media_flow import collect_media_step
+from services.profile_format import build_profile_caption, build_profile_caption_from_row
 from utils import send_media
 
 router = Router()
-
-
-def _caption(name: str, age: int, city: str, desc: str) -> str:
-    return f"{name}, {age}, {city}" + (f"\n{desc}" if desc else "")
 
 
 @router.message(CommandStart())
@@ -33,9 +31,8 @@ async def cmd_start(message: Message, state: FSMContext):
     profile = get_profile(message.from_user.id)
     if profile:
         media_list = get_media(message.from_user.id)
-        _, _, name, age, city, _, _, desc, _, _, _, _, _ = profile
         await message.answer(t("welcome_back", lang))
-        await send_media(message, media_list, _caption(name, age, city, desc))
+        await send_media(message, media_list, build_profile_caption_from_row(profile))
         await message.answer(t("menu_prompt", lang), reply_markup=main_menu_kb(lang))
     else:
         await message.answer(t("welcome", lang), reply_markup=first_kb)
@@ -138,23 +135,16 @@ async def get_photo(message: Message, state: FSMContext):
         await _show_confirmation(message, state, lang, data, temp_media)
         return
 
-    if len(temp_media) >= 3:
+    step = collect_media_step(message, temp_media, max_items=3)
+    if step["status"] == "limit_reached":
         await message.answer(t("max_media", lang), reply_markup=done_media_kb)
         return
-
-    if message.photo:
-        file_id, media_type = message.photo[-1].file_id, "photo"
-    elif message.video_note:
-        file_id, media_type = message.video_note.file_id, "video_note"
-    elif message.video:
-        file_id, media_type = message.video.file_id, "video"
-    else:
+    if step["status"] == "invalid_media":
         await message.answer(t("send_media", lang))
         return
-
-    temp_media.append((file_id, media_type))
+    temp_media = step["temp_media"]
     await state.update_data(temp_media=temp_media)
-    remaining = 3 - len(temp_media)
+    remaining = step["remaining"]
     if remaining > 0:
         await message.answer(t("media_added", lang).format(n=remaining), reply_markup=done_media_kb)
     else:
@@ -162,7 +152,7 @@ async def get_photo(message: Message, state: FSMContext):
 
 
 async def _show_confirmation(message: Message, state: FSMContext, lang: str, data: dict, temp_media: list):
-    caption = _caption(data["name"], data["age"], data["city"], data["description"])
+    caption = build_profile_caption(data["name"], data["age"], data["city"], data["description"])
     await message.answer(t("profile_preview", lang))
     await send_media(message, temp_media, caption)
     await message.answer(t("confirm_prompt", lang), reply_markup=end_kb(lang))
